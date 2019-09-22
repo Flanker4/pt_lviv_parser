@@ -1,0 +1,7 @@
+agency_id,agency_name,agency_url,agency_timezone,agency_lang,agency_phone,agency_fare_url,agency_email
+10,Успіх БМ,http://city-adm.lviv.ua/portal/catalog/transport/marshrutni-taksi/6007,Europe/Kiev,uk,,,
+31,ТзОВ Міра і К,http://city-adm.lviv.ua/portal/catalog/transport/marshrutni-taksi/6006,Europe/Kiev,uk,,,
+32,ПАТ Львівське АТП- 14630,http://latp.com.ua/,Europe/Kiev,uk,,,
+52,АТП-1,https://atp1.lviv.ua/,Europe/Kiev,uk,,,
+89,ЛКП Львівелектротранс,http://lvivelectrotrans.com.ua/,Europe/Kiev,uk,+380987570729,https://tickets.lvivelectrotrans.com.ua/,lvivelektrotrans@gmail.com
+148,Фіакр-Львів,http://city-adm.lviv.ua/portal/catalog/transport/marshrutni-taksi/6008,Europe/Kiev,uk,,,
