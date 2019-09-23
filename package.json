@@ -1,0 +1,25 @@
+{
+  "name": "pt_lviv_parser",
+  "version": "1.0.0",
+  "description": "Simpler parsed script to build consumable dataset for public transportation app",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/Flanker4/pt_lviv_parser.git"
+  },
+  "author": "Andrii Boiko",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Flanker4/pt_lviv_parser/issues"
+  },
+  "homepage": "https://github.com/Flanker4/pt_lviv_parser#readme",
+  "dependencies": {
+    "csv-parser": "^2.3.0"
+  },
+  "prettier" :{
+    "singleQuote": true
+  }
+}
