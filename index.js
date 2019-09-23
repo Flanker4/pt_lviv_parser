@@ -1,103 +1,102 @@
 const fs = require('fs');
-const csv = require('csv-parser')
-const routes = []
+const csv = require('csv-parser');
+
 function readCSV(fileName) {
-    let dataJSON = [];
-    return new Promise(resolve => {
-        fs.createReadStream(fileName)
-            .pipe(csv())
-            .on('data', (data) => dataJSON.push(data))
-            .on('end', () => {
-                resolve(dataJSON);
-            });
-    });
+  let dataJSON = [];
+  return new Promise(resolve => {
+    fs.createReadStream(fileName)
+      .pipe(csv())
+      .on('data', data => dataJSON.push(data))
+      .on('end', () => {
+        resolve(dataJSON);
+      });
+  });
 }
 
 function processShapes(inputShapes) {
-    let outputShapes = {};
-    let tmpShapeId = null;
-    let tmpPath = [];
-    let tmpLength = 0;
-
-
-    for (let inputShape of inputShapes) {
-        if (tmpShapeId !== null && tmpShapeId !== inputShape.shape_id) {
-            outputShapes[tmpShapeId] = { path: tmpPath, length: tmpLength };
-
-            //reset tmp vars
-            tmpPath = [];
-            tmpLength = 0;
-        }
-
-        tmpShapeId = inputShape.shape_id;
-        tmpPath.push([inputShape.shape_pt_lat, inputShape.shape_pt_lon])
-        tmpLength = tmpLength + inputShape.shape_dist_traveled
+  return inputShapes.reduce((acc, s) => {
+    const c = acc[s.shape_id];
+    if (c) {
+      c.path.push([s.shape_pt_lat, s.shape_pt_lon]);
+      c.length += s.shape_dist_traveled;
+    } else {
+      acc[s.shape_id] = {
+        path: [[s.shape_pt_lat, s.shape_pt_lon]],
+        length: s.shape_dist_traveled
+      };
     }
-
-    return outputShapes
+    return acc;
+  }, {});
 }
 
 function processTrips(inputTrips, shapes) {
-    let outputTrips = {};
+  return inputTrips.reduce((acc, trip) => {
+    acc[`${trip.direction_id}_${trip.route_id}`] = shapes[trip.shape_id];
+    return acc;
+  }, {});
+}
 
-    for (let inputTrip of inputTrips) {
-        const tripId = `${inputTrip.direction_id}_${inputTrip.route_id}`
-        outputTrips[tripId] = shapes[inputTrip.shape_id]
-    }
-
-    return outputTrips
+function resolveNameAndType(name, type = 'taxi') {
+  if (name.startsWith('Тр')) {
+    return {
+      type: 'tram',
+      name: name.replace('Тр', '').toLowerCase()
+    };
+  } else if (name.startsWith('Т')) {
+    return {
+      type: 'trolleybuses',
+      name: name.replace('Тр', 'Т').toLowerCase()
+    };
+  }
+  return {
+    type,
+    name: name.replace(/^(Н-А)/, '').replace(/^(А)/, '')
+  };
 }
 
 async function processData() {
-    const inputRoutes = await readCSV('static/routes.txt');
-    const inputTrips = await readCSV('static/trips.txt');
-    const inputShapes = await readCSV('static/shapes.txt');
+  const [inputRoutes, inputTrips, inputShapes] = await Promise.all(
+    ['static/routes.txt', 'static/trips.txt', 'static/shapes.txt'].map(fpath =>
+      readCSV(fpath)
+    )
+  );
 
-    const shapes = processShapes(inputShapes);
-    const trips = processTrips(inputTrips, shapes);
+  const shapes = processShapes(inputShapes);
+  const trips = processTrips(inputTrips, shapes);
 
-    for (let inputRoute of inputRoutes) {
-        var type = 'taxi';
-        var price = 10;
-        var name = inputRoute.route_short_name;
-        var forward_path = trips[`${0}_${inputRoute.route_id}`] || { path: [], length: 0 }
-        var backward_path = trips[`${1}_${inputRoute.route_id}`] || { path: [], length: 0 }
-        var fullPath = (forward_path.path || []).concat(backward_path.path || []);
-        if (inputRoute.route_short_name.startsWith('Тр')) {
-            type = 'tram';
-            name = name.replace('Тр', '').toLowerCase();
-        } else if (inputRoute.route_short_name.startsWith('Т')) {
-            type = 'trolleybuses';
-            name = name.replace('Тр', 'Т').toLowerCase();
-        } else {
-            name = name.replace(/^(Н-А)/, "");
-            name = name.replace(/^(А)/, "");
-        }
+  return inputRoutes.map(route => {
+    const forward_path = trips[`0_${route.route_id}`] || {
+      path: [],
+      length: 0
+    };
+    const backward_path = trips[`1_${route.route_id}`] || {
+      path: [],
+      length: 0
+    };
+    const { type, name } = resolveNameAndType(route.route_short_name);
 
-        var route = {
-            "id": inputRoute.route_id,
-            "description": inputRoute.route_long_name,
-            "name_numeric": inputRoute.route_short_name.replace(/[^\d]/g, ''),
-            "tracker_id": "XXXXXX",
-            "points": fullPath,
-            "stops_forward": [],
-            "stops_backward": [],
-            "type": "taxi",
-            "price": price,
-            "midpoint": 0,
-            "work_start": "00:00:00",
-            "length_forward": forward_path.length || 0,
-            "work_end": "00:00:00",
-            "length_backward": backward_path.length || 0,
-            "name": name
-        }
-        routes.push(route);
-    }
+    return {
+      id: route.route_id,
+      description: route.route_long_name,
+      name_numeric: route.route_short_name.replace(/[^\d]/g, ''),
+      tracker_id: 'XXXXXX',
+      points: (forward_path.path || []).concat(backward_path.path || []),
+      stops_forward: [],
+      stops_backward: [],
+      type,
+      price: 10,
+      midpoint: 0,
+      work_start: '00:00:00',
+      length_forward: forward_path.path.length || 0,
+      work_end: '00:00:00',
+      length_backward: backward_path.path.length || 0,
+      name
+    };
+  });
 }
 
-
-processData().then(v => {
-    console.log("did process data")
-    var json = JSON.stringify(routes);
-    fs.writeFileSync('routes.json', json, 'utf8');
-})
+processData().then(routes => {
+  console.log('did process data');
+  var json = JSON.stringify(routes);
+  fs.writeFileSync('routes.json', json, 'utf8');
+});

@@ -1,0 +1,6 @@
+node_modules
+
+*.log
+
+// don't push scripts output
+routes.json
